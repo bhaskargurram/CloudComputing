@@ -1,6 +1,5 @@
 package com.nyu.cloudcomputing;
 
-import android.app.DownloadManager;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -12,6 +11,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.Spinner;
+import android.widget.Toast;
 
 import com.amazonaws.mobile.client.AWSMobileClient;
 import com.amazonaws.mobileconnectors.s3.transferutility.TransferUtility;
@@ -28,34 +30,74 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
 import java.io.File;
+import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
     private static final int PICK_IMAGE = 1;
 
-    Button selectImageButton;
+    // File size 80KB
+    private static final int MAX_FILE_SIZE = 80000;
+
+    Button processImageButton;
     ImageView imageView;
+    RelativeLayout spinner, placeHolder;
+    File imageFile = null;
+    Spinner models;
+    String modelValue;
+
+    HashMap<String, String> modelsHashMap = new HashMap<>();
+
+    View.OnClickListener selectImageClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            Intent intent = new Intent(Intent.ACTION_PICK,
+                    MediaStore.Images.Media.INTERNAL_CONTENT_URI);
+            intent.setType("image/*");
+            startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
 
-        selectImageButton = findViewById(R.id.button_select_image);
+        processImageButton = findViewById(R.id.button_process_image);
         imageView = findViewById(R.id.image);
+        placeHolder = findViewById(R.id.placeHolder);
+        spinner = findViewById(R.id.progressBar);
+        models = findViewById(R.id.model_spinner);
 
-        selectImageButton.setOnClickListener(new View.OnClickListener() {
+        imageView.setOnClickListener(selectImageClickListener);
+        placeHolder.setOnClickListener(selectImageClickListener);
+
+        processImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(Intent.ACTION_PICK,
-                        MediaStore.Images.Media.INTERNAL_CONTENT_URI);
-                intent.setType("image/*");
-                startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE);
+                if(imageFile != null) {
+                    showSpinner();
+                    uploadWithTransferUtility(imageFile);
+                }else {
+                    Toast.makeText(getApplicationContext(), "Select image first", Toast.LENGTH_LONG).show();
+                }
+                modelValue = modelsHashMap.get(models.getSelectedItem().toString());
             }
         });
 
+        init();
+    }
+
+    private void init(){
         AWSMobileClient.getInstance().initialize(this).execute();
+        modelsHashMap.put("Udnie", "udnie.ckpt");
+        modelsHashMap.put("Wreck", "wreck.ckpt");
+        modelsHashMap.put("Wave", "wave.ckpt");
+        modelsHashMap.put("Scream", "scream.ckpt");
+        modelsHashMap.put("Rain Princess", "rain_princess.ckpt");
+        modelsHashMap.put("La Muse", "la_muse.ckpt");
     }
 
     public void uploadWithTransferUtility(File file) {
@@ -83,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
             public void onStateChanged(int id, TransferState state) {
                 if (TransferState.COMPLETED == state) {
                     String url = "https://pe5enlntb0.execute-api.us-east-1.amazonaws.com/Test/processimage?key=";
-                    url += key;
+                    url += key + "&model_name=" + modelValue;
 
                     RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
 
@@ -101,6 +143,8 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onErrorResponse(VolleyError error) {
                             Log.e(TAG, error.toString());
+                            showPlaceholder();
+                            Toast.makeText(getApplicationContext(), "Error", Toast.LENGTH_LONG).show();
                         }
                     });
 
@@ -162,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
                         .build();
 
 
-        String fileName = "/sdcard/"+Util.getUniqueFileName()+".jpg";
+        final String fileName = "/sdcard/cc-project/"+Util.getUniqueFileName()+".jpg";
 
         TransferObserver downloadObserver =
                 transferUtility.download(
@@ -176,8 +220,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onStateChanged(int id, TransferState state) {
                 if (TransferState.COMPLETED == state) {
-//                    Bitmap bmImg = BitmapFactory.decodeFile("path of your img1");
-//                    imageView.setImageBitmap(bmImg);
+                    Bitmap bmImg = BitmapFactory.decodeFile(fileName);
+                    imageView.setImageBitmap(bmImg);
+                    showImage();
                 }
             }
 
@@ -192,6 +237,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onError(int id, Exception ex) {
                 Log.e(TAG, "Downloading-key:" + key + "-error:" + ex.toString());
+                showPlaceholder();
+                Toast.makeText(getApplicationContext(), "Error Occured", Toast.LENGTH_LONG).show();
             }
 
         });
@@ -216,8 +263,33 @@ public class MainActivity extends AppCompatActivity {
         if(requestCode == PICK_IMAGE) {
             Uri fileUri = data.getData();
             File file = new File(Util.getPath(this, fileUri));
+            if(file.length() > MAX_FILE_SIZE){
+                Toast.makeText(getApplicationContext(), "File size should be less than " + MAX_FILE_SIZE / 1000 + "KB." ,Toast.LENGTH_LONG).show();
+                return;
+            }
             Log.d(TAG, file.toString());
-            uploadWithTransferUtility(file);
+            imageFile = file;
+            Bitmap bmImg = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+            imageView.setImageBitmap(bmImg);
+            showImage();
         }
+    }
+
+    private void showSpinner(){
+        placeHolder.setVisibility(View.GONE);
+        imageView.setVisibility(View.GONE);
+        spinner.setVisibility(View.VISIBLE);
+    }
+
+    private void showImage(){
+        spinner.setVisibility(View.GONE);
+        placeHolder.setVisibility(View.GONE);
+        imageView.setVisibility(View.VISIBLE);
+    }
+
+    private void showPlaceholder(){
+        spinner.setVisibility(View.GONE);
+        imageView.setVisibility(View.GONE);
+        placeHolder.setVisibility(View.VISIBLE);
     }
 }
