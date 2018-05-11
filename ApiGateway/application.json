@@ -1,0 +1,13 @@
+
+{
+    "s3InputKey":"$input.params('key')",
+    
+    "model_name":"$input.params('model_name')",
+    
+    "user_id":"$input.params('user_id')",
+    
+    "user_name":"$input.params('user_name')",
+    
+    "file_size":"$input.params('file_size')"
+    
+}
