@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="models_array">
+        <item>Udnie</item>
+        <item>Wreck</item>
+        <item>Wave</item>
+        <item>Scream</item>
+        <item>Rain Princess</item>
+        <item>La Muse</item>
+    </string-array>
+</resources>
