@@ -5,9 +5,13 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -28,6 +32,12 @@ import com.android.volley.RetryPolicy;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 
 import java.io.File;
 import java.util.HashMap;
@@ -47,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
     Spinner models;
     String modelValue;
 
+    GoogleSignInAccount account;
+
     HashMap<String, String> modelsHashMap = new HashMap<>();
 
     View.OnClickListener selectImageClickListener = new View.OnClickListener() {
@@ -64,6 +76,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
+
+        account = getIntent().getParcelableExtra("account");
+
+        setTitle(account.getDisplayName());
 
         processImageButton = findViewById(R.id.button_process_image);
         imageView = findViewById(R.id.image);
@@ -100,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
         modelsHashMap.put("La Muse", "la_muse.ckpt");
     }
 
-    public void uploadWithTransferUtility(File file) {
+    public void uploadWithTransferUtility(final File file) {
 
         TransferUtility transferUtility =
                 TransferUtility.builder()
@@ -124,8 +140,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onStateChanged(int id, TransferState state) {
                 if (TransferState.COMPLETED == state) {
-                    String url = "https://pe5enlntb0.execute-api.us-east-1.amazonaws.com/Test/processimage?key=";
-                    url += key + "&model_name=" + modelValue;
+                    String url = "https://pe5enlntb0.execute-api.us-east-1.amazonaws.com/Test/processimage?key=" + key;
+                    url += "&user_id=" + account.getId();
+                    url += "&user_name=" + account.getDisplayName().replaceAll("\\s+","");
+                    url += "&file_size=" + file.length();
+                    url += "&model_name=" + modelValue;
 
                     RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
 
@@ -251,6 +270,39 @@ public class MainActivity extends AppCompatActivity {
 
         Log.d("YourActivity", "Bytes Transferrred: " + downloadObserver.getBytesTransferred());
         Log.d("YourActivity", "Bytes Total: " + downloadObserver.getBytesTotal());
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.logout:
+                handleLogout();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void handleLogout() {
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .build();
+        GoogleSignInClient mClient = GoogleSignIn.getClient(this, gso);
+        mClient.signOut().addOnCompleteListener(this, new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                Intent intent = new Intent(getApplicationContext(), SignInActivity.class);
+                startActivity(intent);
+                finish();
+            }
+        });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater mi = getMenuInflater();
+        mi.inflate(R.menu.menu_items, menu);
+        return true;
     }
 
     @Override
