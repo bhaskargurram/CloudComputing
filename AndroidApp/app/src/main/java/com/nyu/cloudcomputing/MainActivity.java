@@ -277,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
                         .build();
 
 
-        final String fileName = "/sdcard/cc-project/"+Util.getUniqueFileName()+".jpg";
+        final String fileName = "/sdcard/cc-project-out/"+Util.getUniqueFileName()+".jpg";
 
         TransferObserver downloadObserver =
                 transferUtility.download(
