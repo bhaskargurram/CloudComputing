@@ -14,7 +14,7 @@ MQTT_KEEPALIVE_INTERVAL = 45
 MQTT_TOPIC = "CloudComputingStoreInDynamoDb"
 MQTT_MSG = '{"UserId" : "'+user_id+'", "UserName": "'+user_name+'", "FileSize" : '+file_size+'}'
 
-MQTT_HOST = "Enter your host name here"
+MQTT_HOST = "a2dixptvnp1o4e.iot.us-east-1.amazonaws.com"
 CA_ROOT_CERT_FILE = "root-CA.crt"
 THING_CERT_FILE = "CloudComptingAndroid.cert.pem"
 THING_PRIVATE_KEY = "CloudComptingAndroid.private.key"
